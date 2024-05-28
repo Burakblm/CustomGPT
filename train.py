@@ -30,7 +30,8 @@ torch.manual_seed(42)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a Transformer model.')
-    parser.add_argument('--data_path', type=str, default="/data/", help="Folder containing training and validation data")
+    parser.add_argument('--data_path', type=str, default=None, help="Folder containing training and validation data")
+    parser.add_argument('--model_path', type=str, default=None , help='directory where the model will be saved')
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size for training')
     parser.add_argument('--epochs', type=int, default=1, help='Epoch number for training')
     parser.add_argument('--block_size', type=int, default=1024, help='Block size for training')
@@ -44,6 +45,7 @@ def parse_args():
 args = parse_args()
 
 data_path = args.data_path
+model_path = args.model_path
 batch_size = args.batch_size
 block_size = args.block_size
 eval_interval = args.eval_interval
@@ -52,6 +54,34 @@ eval_iters = args.eval_iters
 dropout = args.dropout
 epochs = args.epochs
 num_samples_for_loss = args.num_samples_for_loss
+
+
+if args.model_path is not None:
+    model_path = args.model_path
+else:
+    model_dir = os.path.join(os.getcwd(), "model")
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+    model_path = os.path.join(model_dir, "snapshot.pt")
+
+
+model_args = ModelArgs()
+model = Transformer(model_args)
+
+
+if os.path.exists(model_path):
+    if isinstance(model, torch.nn.parallel.DistributedDataParallel):
+        model.module.load_state_dict(torch.load(model_path, map_location=device))
+    else:
+        model.load_state_dict(torch.load(model_path, map_location=device))
+        model.to(device)
+
+if ddp:
+    gpu_id = int(os.environ["LOCAL_RANK"])
+    model = model.to(gpu_id)
+    model = DDP(model, device_ids=[gpu_id])
+else:
+    model = model.to(device)
 
 
 def ddp_setup():
@@ -82,8 +112,25 @@ def prepare_dataloader(dataset: Dataset, batch_size: int):
             shuffle=False,
             num_workers=0
         )
+    
+class PTFileNotFoundError(Exception):
+    """Custom exception raised when either or both of the files train.pt or val.pt are not found."""
+    pass
 
 def find_pt_files(directory_path: str):
+    """
+    Finds the train.pt and val.pt files in the specified directory.
+
+    Args:
+        directory_path (str): The directory path where the files will be searched.
+
+    Returns:
+        tuple: A tuple containing the paths of the found files (train.pt, val.pt).
+               Returns None if the file is not found.
+
+    Raises:
+        PTFileNotFoundError: Raised if either of the files train.pt or val.pt is not found.
+    """
     train_file_path = os.path.join(directory_path, 'train.pt')
     val_file_path = os.path.join(directory_path, 'val.pt')
 
@@ -92,6 +139,14 @@ def find_pt_files(directory_path: str):
 
     train_result = train_file_path if train_exists else None
     val_result = val_file_path if val_exists else None
+
+    if not train_exists or not val_exists:
+        missing_files = []
+        if not train_exists:
+            missing_files.append('train.pt')
+        if not val_exists:
+            missing_files.append('val.pt')
+        raise PTFileNotFoundError(f"Files not found: {', '.join(missing_files)}")
 
     return train_result, val_result
         
@@ -102,22 +157,15 @@ def create_data_loader(data_path: str):
     dataloader = prepare_dataloader(dataset, batch_size)
     return dataloader
 
-
-train_data_path, val_data_path = find_pt_files(data_path)
+try:
+    train_data_path, val_data_path = find_pt_files(data_path)
+    print("Train file path:", train_data_path)
+    print("Val file path:", val_data_path)
+except PTFileNotFoundError as e:
+    print(e)
 
 train_dataloader = create_data_loader(train_data_path)
 val_dataloader = create_data_loader(val_data_path)
-
-
-model_args = ModelArgs()
-model = Transformer(model_args)
-
-if ddp:
-    gpu_id = int(os.environ["LOCAL_RANK"])
-    model = model.to(gpu_id)
-    model = DDP(model, device_ids=[gpu_id])
-else:
-    model = model.to(device)
 
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
@@ -176,6 +224,10 @@ def train():
 
             loop.set_description(f"Epoch [{epoch}/{epochs}]")
             loop.set_postfix(loss = loss.item())
+        
+        print(f"Model is being saved to the path {model_path} ...")
+        torch.save(model.module.state_dict() if ddp else model.state_dict(), model_path)
+        print(f"Epoch {epoch} | training snapshot save at snapshot.pt\n")
 
 
 if ddp:
