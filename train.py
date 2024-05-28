@@ -205,7 +205,7 @@ def train():
         loop = tqdm(enumerate(train_dataloader), total=len(train_dataloader), leave=True)
 
         for i, (inputs, targets) in loop:
-            if i % eval_interval == 0 and i > 0:
+            if i % eval_interval == 0 and 1 == 0:#deneme için 0 yapıldı
                 if ddp:
                     if gpu_id == 0:
                         out = calculate_loss()
