@@ -79,8 +79,10 @@ model = Transformer(model_args)
 
 if os.path.exists(model_path):
     if isinstance(model, torch.nn.parallel.DistributedDataParallel):
+        print("Loading from model file path...")
         model.module.load_state_dict(torch.load(model_path, map_location=device))
     else:
+        print("Loading from model file path...")
         model.load_state_dict(torch.load(model_path, map_location=device))
         model.to(device)
 
