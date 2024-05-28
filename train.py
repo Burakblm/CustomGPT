@@ -55,6 +55,14 @@ dropout = args.dropout
 epochs = args.epochs
 num_samples_for_loss = args.num_samples_for_loss
 
+def ddp_setup():
+    init_process_group(backend="nccl")
+
+def destroy_ddp():
+    destroy_process_group()
+
+if ddp:
+    ddp_setup()
 
 if args.model_path is not None:
     model_path = args.model_path
@@ -83,15 +91,6 @@ if ddp:
 else:
     model = model.to(device)
 
-
-def ddp_setup():
-    init_process_group(backend="nccl")
-
-def destroy_ddp():
-    destroy_process_group()
-
-if ddp:
-    ddp_setup()
 
 scaler = GradScaler()
 
