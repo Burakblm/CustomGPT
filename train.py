@@ -25,16 +25,6 @@ from data_loader import GPTDataset
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 ddp = int(os.environ.get("RANK", -1)) != -1
 dtype = 'bfloat16' if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else 'float16'
-
-def ddp_setup():
-    init_process_group(backend="nccl")
-
-def destroy_ddp():
-    destroy_process_group()
-
-if ddp:
-    ddp_setup()
-
 torch.manual_seed(42)
 
 
@@ -61,6 +51,16 @@ eval_iters = args.eval_iters
 dropout = args.dropout
 epochs = args.epochs
 num_samples_for_loss = args.num_samples_for_loss
+
+
+def ddp_setup():
+    init_process_group(backend="nccl")
+
+def destroy_ddp():
+    destroy_process_group()
+
+if ddp:
+    ddp_setup()
 
 scaler = GradScaler()
 
@@ -126,42 +126,45 @@ def calculate_loss():
                 targets = targets.to(gpu_id if ddp else device)
                 logits, loss = model(inputs, targets)
                 losses[j] = loss.item()
-                loop.set_description(f"{i} Average Loss")
+                loop.set_description(f"{split} Average Loss")
                 loop.set_postfix(loss = loss.item())
-        out[i] = losses.mean()
+        out[split] = losses.mean()
     model.train()
     return out
 
 
+def train():
+    for epoch in range(epochs):
+        bs = len(next(iter(train_dataloader))[0])
+        print(f"[GPU:{gpu_id if ddp else device}] Epoch {epoch} | Batchsize: {bs} | Steps: {len(train_dataloader)}")
+        loop = tqdm(enumerate(train_dataloader), total=len(train_dataloader), leave=True)
 
-for epoch in range(epochs):
-    bs = len(next(iter(train_dataloader))[0])
-    print(f"[GPU:{gpu_id if ddp else device}] Epoch {epoch} | Batchsize: {bs} | Steps: {len(train_dataloader)}")
-    loop = tqdm(enumerate(train_dataloader), total=len(train_dataloader), leave=True)
-
-    for i, (inputs, targets) in loop:
-        if i % eval_interval == 0 and i > 0:
-            if ddp:
-                if gpu_id == 0:
+        for i, (inputs, targets) in loop:
+            if i % eval_interval == 0 and i > 0:
+                if ddp:
+                    if gpu_id == 0:
+                        out = calculate_loss()
+                        print(f"Train loss: {out['train']:.4f}" + (f" | Val loss : {out['val']:.4f}" if val_dataloader is not None else ""))
+                else:
                     out = calculate_loss()
                     print(f"Train loss: {out['train']:.4f}" + (f" | Val loss : {out['val']:.4f}" if val_dataloader is not None else ""))
-            else:
-                out = calculate_loss()
-                print(f"Train loss: {out['train']:.4f}" + (f" | Val loss : {out['val']:.4f}" if val_dataloader is not None else ""))
 
-        inputs = inputs.to(gpu_id if ddp else device)
-        targets = targets.to(gpu_id if ddp else device)
-        optimizer.zero_grad(set_to_none=True)
-        with autocast(dtype=torch.float16):
-            logits, loss = model(inputs, targets)
-        scaler.scale(loss).backward()
-        scaler.step(optimizer)
-        scaler.update()
+            inputs = inputs.to(gpu_id if ddp else device)
+            targets = targets.to(gpu_id if ddp else device)
+            optimizer.zero_grad(set_to_none=True)
+            with autocast(dtype=torch.float16):
+                logits, loss = model(inputs, targets)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
-        loop.set_description(f"Epoch [{epoch}/{epochs}]")
-        loop.set_postfix(loss = loss.item())
-
+            loop.set_description(f"Epoch [{epoch}/{epochs}]")
+            loop.set_postfix(loss = loss.item())
 
 
 if ddp:
     destroy_ddp()
+
+if __name__ == "__main__":
+    args = parse_args()
+    train()
