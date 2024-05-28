@@ -70,7 +70,7 @@ def prepare_dataloader(dataset: Dataset, batch_size: int):
             dataset,
             batch_size=batch_size,
             pin_memory=True,
-            shuffle=True,
+            shuffle=False,
             sampler=DistributedSampler(dataset)
         )
     else:
@@ -78,7 +78,7 @@ def prepare_dataloader(dataset: Dataset, batch_size: int):
             dataset,
             batch_size=batch_size,
             pin_memory=True,
-            shuffle=True,
+            shuffle=False,
             num_workers=0
         )
 
