@@ -226,9 +226,15 @@ def train():
             loop.set_description(f"Epoch [{epoch}/{epochs}]")
             loop.set_postfix(loss = loss.item())
         
-        print(f"Model is being saved to the path {model_path} ...")
-        torch.save(model.module.state_dict() if ddp else model.state_dict(), model_path)
-        print(f"Epoch {epoch} | training snapshot save at snapshot.pt\n")
+        if ddp:
+            if gpu_id == 0:
+                print(f"Model is being saved to the path {model_path} ...")
+                torch.save(model.module.state_dict() if ddp else model.state_dict(), model_path)
+                print(f"Epoch {epoch} | training snapshot save at snapshot.pt\n")
+        else:
+            print(f"Model is being saved to the path {model_path} ...")
+            torch.save(model.module.state_dict() if ddp else model.state_dict(), model_path)
+            print(f"Epoch {epoch} | training snapshot save at snapshot.pt\n")
 
 
 if ddp:
