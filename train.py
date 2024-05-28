@@ -82,12 +82,13 @@ def prepare_dataloader(dataset: Dataset, batch_size: int):
             num_workers=0
         )
 
-
-train_data = load_tensor("/Users/burakbulama/Desktop/CustomGPT/data/train.pt")
+train_data_path = os.getcwd() + "/data/train.pt"
+train_data = load_tensor(train_data_path)
 train_dataset = GPTDataset(train_data, block_size=1024)
 train_dataloader = prepare_dataloader(train_dataset, 8)
 
-val_data = load_tensor("/Users/burakbulama/Desktop/CustomGPT/data/val.pt")
+val_data_path = os.getcwd() + "/data/val.pt"
+val_data = load_tensor(val_data_path)
 val_dataset = GPTDataset(val_data, block_size=1024)
 val_dataloader = prepare_dataloader(val_dataset, 8)
 
