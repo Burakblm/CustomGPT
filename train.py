@@ -34,9 +34,8 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size for training')
     parser.add_argument('--epochs', type=int, default=1, help='Epoch number for training')
     parser.add_argument('--block_size', type=int, default=1024, help='Block size for training')
-    parser.add_argument('--max_iters', type=int, default=100, help='Maximum number of iterations')
-    parser.add_argument('--eval_interval', type=int, default=50, help='Evaluation interval')
-    parser.add_argument('--num_samples_for_loss', type=int, default=20, help='How much data will be used to calculate the loss value?')
+    parser.add_argument('--eval_interval', type=int, default=1000, help='Evaluation interval')
+    parser.add_argument('--num_samples_for_loss', type=int, default=100, help='How much data will be used to calculate the loss value?')
     parser.add_argument('--learning_rate', type=float, default=1e-4, help='Learning rate')
     parser.add_argument('--eval_iters', type=int, default=50, help='Number of evaluation iterations')
     parser.add_argument('--dropout', type=float, default=0.2, help='Dropout rate')
@@ -135,7 +134,7 @@ def calculate_loss():
     for split in ['train', 'val']:
         if dataloader[split] is not None:
             losses = torch.zeros(num_samples_for_loss)
-            loop = tqdm(enumerate(dataloader[split]), total=num_samples_for_loss, leave=True)
+            loop = tqdm(enumerate(dataloader[split]), total=num_samples_for_loss-1, leave=True)
             for j, (inputs, targets) in loop:
                 if j > num_samples_for_loss:
                     break
