@@ -66,6 +66,13 @@ class Lora:
             if 'lora' not in name:
                 print(f"Freezing non-LoRA parameter {name} with shape {param.size()}")
                 param.requires_grad = False
+    
+    def enable_all_params(self):
+        for name, param in self.model.named_parameters():
+            if 'lora' in name:
+                param.requires_grad = False
+            else:
+                param.requires_grad = True
 
     def print_model_parameters(self):
         for name, param in self.model.named_parameters():

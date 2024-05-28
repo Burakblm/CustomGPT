@@ -30,6 +30,7 @@ torch.manual_seed(42)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a Transformer model.')
+    parser.add_argument('--data_path', type=str, default="/data/", help="Folder containing training and validation data")
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size for training')
     parser.add_argument('--epochs', type=int, default=1, help='Epoch number for training')
     parser.add_argument('--block_size', type=int, default=1024, help='Block size for training')
@@ -43,6 +44,7 @@ def parse_args():
 
 args = parse_args()
 
+data_path = args.data_path
 batch_size = args.batch_size
 block_size = args.block_size
 eval_interval = args.eval_interval
@@ -82,15 +84,30 @@ def prepare_dataloader(dataset: Dataset, batch_size: int):
             num_workers=0
         )
 
-train_data_path = os.getcwd() + "/data/train.pt"
-train_data = load_tensor(train_data_path)
-train_dataset = GPTDataset(train_data, block_size=1024)
-train_dataloader = prepare_dataloader(train_dataset, 8)
+def find_pt_files(directory_path: str):
+    train_file_path = os.path.join(directory_path, 'train.pt')
+    val_file_path = os.path.join(directory_path, 'val.pt')
 
-val_data_path = os.getcwd() + "/data/val.pt"
-val_data = load_tensor(val_data_path)
-val_dataset = GPTDataset(val_data, block_size=1024)
-val_dataloader = prepare_dataloader(val_dataset, 8)
+    train_exists = os.path.isfile(train_file_path)
+    val_exists = os.path.isfile(val_file_path)
+
+    train_result = train_file_path if train_exists else None
+    val_result = val_file_path if val_exists else None
+
+    return train_result, val_result
+        
+
+def create_data_loader(data_path: str):
+    data = load_tensor(data_path)
+    dataset = GPTDataset(data, block_size=block_size)
+    dataloader = prepare_dataloader(dataset, batch_size)
+    return dataloader
+
+
+train_data_path, val_data_path = find_pt_files(data_path)
+
+train_dataloader = create_data_loader(train_data_path)
+val_dataloader = create_data_loader(val_data_path)
 
 
 model_args = ModelArgs()
