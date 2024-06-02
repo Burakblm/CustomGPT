@@ -1,3 +1,6 @@
 __pycache__/
 .DS_Store
 /venv
+train (1).jsonl
+train_tr.json
+/model
