@@ -110,7 +110,7 @@ def prepare_dataloader(dataset: Dataset, batch_size: int):
             dataset,
             batch_size=batch_size,
             pin_memory=True,
-            shuffle=False,
+            shuffle=True,
             num_workers=0
         )
     
