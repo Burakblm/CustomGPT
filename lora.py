@@ -29,7 +29,6 @@ class LoRAParametrization(nn.Module):
 
     def forward(self, original_weights):
         if self.enabled:
-            # Return W + (B*A)*scale
             return original_weights + torch.matmul(self.lora_B, self.lora_A).view(original_weights.shape) * self.scale
         else:
             return original_weights

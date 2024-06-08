@@ -22,27 +22,3 @@ class GPTDataset(Dataset):
     def __len__(self):
         return math.ceil(self.n_samples / self.block_size)
 
-
-"""
-# Örnek veri oluşturalım
-data = torch.arange(100000)  # 0'dan 99999'a kadar olan sayılar
-
-# Veri setini oluşturalım
-dataset = GPTDataset(data, block_size=1024)
-
-print(dataset.__len__())
-
-
-# DataLoader oluşturalım (shuffle=True ile her epoch'ta veri kümesini karıştır)
-dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
-
-# Veri yükleme işlemi
-for epoch in range(2):
-    print(f"Epoch {epoch+1}:")
-    for batch_idx, (x, y) in enumerate(dataloader):
-        print(f"Batch {batch_idx}:\n")
-        print(f"X shape: {x.shape}, Y shape: {y.shape}")
-        print(f"X:\n{x}")
-        print(f"Y:\n{y}\n")
-
-"""
