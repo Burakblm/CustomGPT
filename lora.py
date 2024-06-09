@@ -13,11 +13,11 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 @dataclass
 class LoraConfig:
-    rank: int = 8
-    alpha: int = 32
+    rank: int = 16
+    alpha: int = 16
 
 class LoRAParametrization(nn.Module):
-    def __init__(self, features_in, features_out, rank=1, alpha=1, device=device):
+    def __init__(self, features_in, features_out, rank=16, alpha=16, device=device):
         super().__init__()
 
         self.lora_A = nn.Parameter(torch.zeros((rank,features_out)).to(device))
